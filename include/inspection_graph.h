@@ -62,6 +62,7 @@ namespace Inspection {
 		EPtr& Edge(const Idx index);
 		EPtr Edge(const Idx index) const;
         SizeType NumTargetsCovered() const;
+		VisibilitySet GetGlobalVisibility() const; // Nadav
 
 		void Save(const String file_name, const bool save_configs=true, const Idx dof=0) const;
 		void ReadFromFiles(const String file_name, const bool read_configs=true, const Idx dof=0);

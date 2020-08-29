@@ -25,12 +25,22 @@
 #include "bridge_environment.h"
 #include "inspection_graph.h"
 
+#define USE_POI_FOCUS 1 //Nadav
+#if USE_POI_FOCUS
+#define FOCUS_START_COVERAGE 60
+#define FOCUS_FREQUENCY 2
+#define FOCUS_MAX_FAILURES 1000
+#define FOCUS_MIN_EXTEND 0.1
+#endif // USE_POI_FOCUS
+
+//bool edge_check;
+
 namespace ob = ompl::base;
 namespace og = ompl::geometric;
 
 namespace drone {
 
-class DronePlanner {
+class DronePlanner{
 public:
     using RobotPtr = std::shared_ptr<DroneRobot>;
     using EnvPtr = std::shared_ptr<BridgeEnvironment>;
@@ -54,6 +64,14 @@ private:
     SizeType incremental_step_{100};
     RealNum reject_ratio_{1.0};
     RealNum validation_distance_{10.0};
+
+    #if USE_POI_FOCUS
+    Inspection::Graph* graph_{nullptr}; // Nadav
+    unsigned valid_states_counter{0};
+    unsigned invalid_states_counter{0};
+    unsigned focus_frequency{FOCUS_FREQUENCY};
+    RealNum focus_min_extend{FOCUS_MIN_EXTEND};
+    #endif // USE_POI_FOCUS
 
     ob::SpaceInformationPtr space_info_;
 

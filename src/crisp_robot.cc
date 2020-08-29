@@ -281,11 +281,13 @@ RealNum& CRISPConfig::Stability() {
     return stability_;
 }
 
-bool CRISPConfig::IsValid() const {
+bool CRISPConfig::IsValid() const { // Nadav
+    std::cout << " IsValid()c " << std::endl;
     return is_valid_;
 }
 
-bool& CRISPConfig::IsValid() {
+bool& CRISPConfig::IsValid() { // Nadav
+    std::cout << " IsValid() " << std::endl;
     return is_valid_;
 }
 
@@ -519,6 +521,7 @@ void CRISPRobot::ComputeShape() {
 
     // save robot shape
     config_->Shape().reset(new CRISPShape());
+    //std::cout << "ComputeShape()" << std::endl; // Nadav
     for (Idx i = 0; i < tool_rod_observers.size() - 1; ++i) {
         auto cylinder = geo::Cylinder(to_segmentation_*tool_rod_observers(i).state().position().cast<RealNum>(),
                                       to_segmentation_*tool_rod_observers(i+1).state().position().cast<RealNum>(),

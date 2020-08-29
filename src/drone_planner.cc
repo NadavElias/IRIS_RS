@@ -1,5 +1,7 @@
 #include "drone_planner.h"
 
+extern bool state_sample; // Nadav
+
 namespace drone {
 
 DronePlanner::DronePlanner(const RobotPtr& robot, const EnvPtr& env, const Idx seed)
@@ -97,6 +99,14 @@ void DronePlanner::BuildAndSaveInspectionGraph(const String file_name, const Idx
     // Build graph incrementally.
     auto num_targets = env_->NumTargets();
     Inspection::Graph *graph = new Inspection::Graph();
+
+    #if USE_POI_FOCUS
+    graph_ = graph; // Nadav
+    valid_states_counter = 0;
+    invalid_states_counter = 0;
+    focus_frequency = FOCUS_FREQUENCY; //FOCUS_FREQUENCY
+    focus_min_extend = FOCUS_MIN_EXTEND;
+    #endif // USE_POI_FOCUS
     
     ob::PlannerData tree_data(space_info_);
     ob::PlannerData graph_data(space_info_);
@@ -110,6 +120,10 @@ void DronePlanner::BuildAndSaveInspectionGraph(const String file_name, const Idx
     graph->Save(file_name, true);
 
     delete graph;
+
+    #if USE_POI_FOCUS
+    graph_ = nullptr; // Nadav
+    #endif USE_POI_FOCUS
 }
 
 void DronePlanner::BuildRRGIncrementally(Inspection::Graph *graph, 
@@ -208,7 +222,7 @@ void DronePlanner::ComputeVisibilitySet(Inspection::VPtr vertex) const {
     }
 }
 
-bool DronePlanner::StateValid(const ob::State *state) {
+bool DronePlanner::StateValid(const ob::State *state) { // Nadav
     const auto& s = state->as<DroneStateSpace::StateType>();
 
     if (!env_->IsCollisionFree(s->Position(), robot_->SphereRadius())) {
@@ -222,10 +236,70 @@ bool DronePlanner::StateValid(const ob::State *state) {
     robot_->SetConfig(s->Position(), s->Yaw(), s->CameraAngle());
     robot_->ComputeShape();
 
-    return env_->IfCorrectDirection(robot_->CameraPos(),
+    #if USE_POI_FOCUS
+    if (!state_sample)
+        return env_->IfCorrectDirection(robot_->CameraPos(),
                                     robot_->CameraTangent(),
                                     robot_->FOV(),
                                     validation_distance_);
+
+    state_sample = false;
+    bool extends_view = true;
+    bool focus = false;
+    if (graph_ != nullptr)
+    {
+        RealNum coverage = graph_->NumTargetsCovered()*(RealNum)100/env_->NumTargets();
+        if (coverage > FOCUS_START_COVERAGE && valid_states_counter % focus_frequency == 0 && invalid_states_counter < FOCUS_MAX_FAILURES)
+        {
+            focus = true;
+            auto visible_points = env_->GetVisiblePointIndices(robot_->CameraPos(), 
+                                                            robot_->CameraTangent(), 
+                                                            robot_->FOV(),
+                                                            robot_->MinDOF(),
+                                                            robot_->MaxDOF());
+            VisibilitySet vis_set;
+            for (auto p : visible_points) {
+                vis_set.Insert(p);
+            }
+
+            RealNum extend_rate = vis_set.ContainsMoreThan(graph_->GetGlobalVisibility());
+            std::cout << focus_min_extend << " - " << extend_rate*(RealNum)100/env_->NumTargets() << ", ";
+            extends_view = extend_rate*(RealNum)100/env_->NumTargets() >= focus_min_extend;
+        }
+        if (invalid_states_counter == FOCUS_MAX_FAILURES)
+        {
+            focus_frequency *= 2;
+            focus_min_extend /= 2;
+            //std::cout << "\nfocus_frequency " << focus_frequency << std::endl;
+        }
+    }
+    bool validity = extends_view && env_->IfCorrectDirection(robot_->CameraPos(),
+                                                            robot_->CameraTangent(),
+                                                            robot_->FOV(),
+                                                            validation_distance_);
+    if (validity)
+    {
+        valid_states_counter++;
+        invalid_states_counter = 0;
+        if (focus)
+        {
+            focus_frequency = FOCUS_FREQUENCY;
+            //focus_min_extend = FOCUS_MIN_EXTEND;
+        }
+    }
+    else
+    {
+        invalid_states_counter++;
+    }
+
+    return validity;
+
+    #else
+    return env_->IfCorrectDirection(robot_->CameraPos(),
+                                robot_->CameraTangent(),
+                                robot_->FOV(),
+                                validation_distance_);
+    #endif // USE_POI_FOCUS
 }
 
 bool DronePlanner::CheckEdge(const ob::State *source, const ob::State *target) const {

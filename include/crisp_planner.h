@@ -62,6 +62,13 @@ private:
     RealNum stability_threshold_{1e-3};
     SizeType num_targets_{0};
 
+    #if USE_POI_FOCUS
+    Inspection::Graph* graph_{nullptr}; // Nadav
+    unsigned valid_states_counter{0};
+    unsigned invalid_states_counter{0};
+    unsigned focus_frequency{FOCUS_FREQUENCY};
+    #endif // USE_POI_FOCUS
+
     void SetSeed(const Idx seed);
     RealNum RandomRealNumber(const RealNum lower_bound, const RealNum higher_bound);
 

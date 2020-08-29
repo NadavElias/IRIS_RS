@@ -28,6 +28,7 @@ public:
     bool IsExpending(const VisibilitySet& other) const;
     bool Contains(const VisibilitySet& other) const;
     bool IsContainedIn(const VisibilitySet& other) const;
+    SizeType ContainsMoreThan(const VisibilitySet& other) const; // Nadav
     SizeType Size() const;
     const Bitset& bitset() const;
 

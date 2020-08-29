@@ -49,7 +49,7 @@
 #include "ompl/base/samplers/informed/OrderedInfSampler.h"
 #include "ompl/tools/config/SelfConfig.h"
 #include "ompl/util/GeometricEquations.h"
-
+bool state_sample;
 ompl::geometric::RRG::RRG(const base::SpaceInformationPtr &si)
   : base::Planner(si, "RRG")
 {
@@ -265,6 +265,11 @@ ompl::base::PlannerStatus ompl::geometric::RRG::solve(const base::PlannerTermina
     // while (ptc == false)
     while (ptc == false)
     {
+        state_sample = true; // Nadav
+        // #if USE_POI_FOCUS
+        // std::cout << " flag check motion " << std::endl;
+        // #endif
+
         iterations_++;
 
         // sample random state (with goal biasing)
@@ -296,7 +301,7 @@ ompl::base::PlannerStatus ompl::geometric::RRG::solve(const base::PlannerTermina
             si_->getStateSpace()->interpolate(nmotion->state, rstate, maxDistance_ / d, xstate);
             dstate = xstate;
         }
-
+        
         // Check if the motion between the nearest state and the state to add is valid
         // if ( true )
         if (si_->checkMotion(nmotion->state, dstate))

@@ -50,7 +50,7 @@
 #include <list>
 #include <ctime>
 #include <ompl/base/spaces/RealVectorStateSpace.h>
-
+extern bool state_sample; // Nadav
 namespace ompl
 {
     namespace geometric

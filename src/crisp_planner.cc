@@ -4,7 +4,7 @@ namespace crisp {
 
 CRISPPlanner::CRISPPlanner(const RobotPtr robot, const CollisionDetectorPtr detector, const Idx seed)
     : robot_(robot), detector_(detector) {
-
+    std::cout << "entered to CRISPPlanner" << std::endl; // Nadav
     SetSeed(seed);
 
     // ompl
@@ -37,9 +37,59 @@ oc::DirectedControlSamplerPtr CRISPPlanner::AllocateCrispSampler(const oc::Contr
     return oc::DirectedControlSamplerPtr(new CrispDirectedControlSampler(robot_, detector_, cspace, si, quat_deviation_percent_, rng_));
 }
 
-bool CRISPPlanner::StateValid(const ob::State *state) {
+bool CRISPPlanner::StateValid(const ob::State *state) { // Nadav
+    #if USE_POI_FOCUS
+    bool extends_view = true;
+    bool focus = false;
+    std::cout << "hello1" << std::endl;
+    if (graph_ != nullptr)
+    {
+        RealNum coverage = graph_->NumTargetsCovered()*(RealNum)100/num_targets_;
+        std::cout << "hello2" << std::endl;
+        if (valid_states_counter > 40 && valid_states_counter % focus_frequency == 0 && invalid_states_counter < FOCUS_MAX_FAILURES)
+        {
+            std::cout << "got to focus part!" << std::endl;
+            focus = true;
+            VisibilitySet vis_set;
+
+            const CrispStateSpace::StateType *s = state->as<CrispStateSpace::StateType>();
+            detector_->ComputeVisSetForConfiguration(s->TipTranslation(), s->TipTangent(), &vis_set);
+
+            //extends_view = !vis_set.IsContainedIn(graph_->GetGlobalVisibility());
+            RealNum extend_rate = vis_set.ContainsMoreThan(graph_->GetGlobalVisibility());
+            extends_view = extend_rate*(RealNum)100/num_targets_ >= 0.1;
+        }
+        if (invalid_states_counter == FOCUS_MAX_FAILURES)
+        {
+            std::cout << "focus_frequency " << focus_frequency << std::endl;
+            focus_frequency *= 1.5;
+        }
+    }
+    bool validity = extends_view && state->as<CrispStateSpace::StateType>()->IsValid();
+    if (validity)
+    {
+        valid_states_counter++;
+        invalid_states_counter = 0;
+        if (focus)
+        {
+            std::cout << "invalid_states_counter " << invalid_states_counter << std::endl;
+            focus_frequency = FOCUS_FREQUENCY;
+        }
+    }
+    else
+    {
+        invalid_states_counter++;
+    }
+    //if (!env_->IsCollisionFree(StateToShape(state)) && extends_view)
+    //    std::cout << "Extends view but not collision free" << std::endl;
+    //if (env_->IsCollisionFree(StateToShape(state)) && extends_view)
+    //    std::cout << "Extends view AND collision free" << std::endl;
+    return validity;
+
+    #else
     // valid iff kinematics is solved and 
     return state->as<CrispStateSpace::StateType>()->IsValid();
+    #endif // USE_POI_FOCUS
 }
 
 void CRISPPlanner::Propagate(const ob::State *state, const oc::Control *control, const RealNum time, ob::State *result) {
@@ -177,10 +227,18 @@ void CRISPPlanner::BuildAndSaveInspectionGraph(const String file_name, const Siz
 
     Inspection::Graph *graph = new Inspection::Graph();
     
+    #if USE_POI_FOCUS
+    graph_ = graph; // Nadav
+    valid_states_counter = 0;
+    invalid_states_counter = 0;
+    focus_frequency = FOCUS_FREQUENCY;
+    #endif // USE_POI_FOCUS
+
     validate_all_edges_ = true;
     SizeType incremental_step = 100;
     const TimePoint start = Clock::now();
     while (graph->NumVertices() < target_size) {
+        //incremental_step = max(100, target_size - graph->NumVertices());
         BuildRRGIncrementally(graph, planner, tree_data, graph_data, incremental_step);
         std::cout << "Time elapsed: " << RelativeTime(start)/(RealNum)1000 
             << ", covered targets: " << graph->NumTargetsCovered() 
@@ -190,6 +248,10 @@ void CRISPPlanner::BuildAndSaveInspectionGraph(const String file_name, const Siz
     graph->Save(file_name);
 
     delete graph;
+
+    #if USE_POI_FOCUS
+    graph_ = nullptr; // Nadav
+    #endif USE_POI_FOCUS
 }
 
 void CRISPPlanner::BuildRRGIncrementally(Inspection::Graph *graph, 

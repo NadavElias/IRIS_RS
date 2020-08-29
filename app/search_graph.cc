@@ -58,8 +58,8 @@ int main(int argc, char** argv) {
         p += (1 - p)*update_rate;
         eps += (0 - eps)*update_rate;
 
-        if (search.ResultCoverageSize() / (RealNum)search.VirtualGraphCoverageSize() > p
-            && addtional < 500) {
+        if (search.ResultCoverageSize() / (RealNum)search.VirtualGraphCoverageSize() > 0.9*p // Nadav
+            && addtional < 200) {
             continue;
         }
 

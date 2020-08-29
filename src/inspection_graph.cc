@@ -122,6 +122,10 @@ SizeType Inspection::Graph::NumTargetsCovered() const {
     return global_vis_set_.Size();
 }
 
+VisibilitySet Inspection::Graph::GetGlobalVisibility() const{ // Nadav
+	return global_vis_set_;
+}
+
 void Inspection::Graph::Save(const String file_name, const bool save_configs, const Idx dof) const {
 	// write in a common format for all robots
 	String vertex_file = file_name + "_vertex";

@@ -22,6 +22,13 @@
 #include "ompl/infinite_goal.h"
 #include "inspection_graph.h"
 
+#define USE_POI_FOCUS 1 //Nadav
+#if USE_POI_FOCUS
+#define FOCUS_START_COVERAGE 80
+#define FOCUS_FREQUENCY 10
+#define FOCUS_MAX_FAILURES 1000
+#endif // USE_POI_FOCUS
+
 namespace ob = ompl::base;
 namespace og = ompl::geometric;
 namespace oc = ompl::control;
@@ -40,6 +47,7 @@ public:
     void SetParams(const RealNum step_size, const bool if_k_nearest);
     void BuildAndSaveInspectionGraph(const String file_name, const Idx target_size);
 
+
 private:
     RobotPtr robot_;
     EnvPtr env_;
@@ -50,6 +58,13 @@ private:
     bool k_nearest_{true};
     bool validate_all_edges_{true};
     SizeType incremental_step_{100};
+
+    #if USE_POI_FOCUS
+    Inspection::Graph* graph_{nullptr}; // Nadav
+    unsigned valid_states_counter{0};
+    unsigned invalid_states_counter{0};
+    unsigned focus_frequency{FOCUS_FREQUENCY};
+    #endif // USE_POI_FOCUS
 
     ob::SpaceInformationPtr space_info_;
 

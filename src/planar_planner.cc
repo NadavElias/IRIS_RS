@@ -97,6 +97,13 @@ void PlanarPlanner::BuildAndSaveInspectionGraph(const String file_name, const Id
     // Build graph incrementally.
     auto num_targets = env_->NumTargets();
     Inspection::Graph *graph = new Inspection::Graph();
+
+    #if USE_POI_FOCUS
+    graph_ = graph; // Nadav
+    valid_states_counter = 0;
+    invalid_states_counter = 0;
+    focus_frequency = FOCUS_FREQUENCY;
+    #endif // USE_POI_FOCUS
     
     ob::PlannerData tree_data(space_info_);
     ob::PlannerData graph_data(space_info_);
@@ -110,6 +117,10 @@ void PlanarPlanner::BuildAndSaveInspectionGraph(const String file_name, const Id
     graph->Save(file_name, true, dim);
 
     delete graph;
+
+    #if USE_POI_FOCUS
+    graph_ = nullptr; // Nadav
+    #endif USE_POI_FOCUS
 }
 
 void PlanarPlanner::BuildRRGIncrementally(Inspection::Graph *graph, 
@@ -149,6 +160,9 @@ void PlanarPlanner::BuildRRGIncrementally(Inspection::Graph *graph,
         vertex->time_vis = RelativeTime(start);
         vertex->time_build = avg_time_build;
 
+        //if (vertex->vis.IsContainedIn(graph->))
+
+        //std::cout << vertex->vis.bitset().count() << ", " << std::flush;
         graph->UpdateGlobalVisibility(vertex->vis);
 
         // tree edges
@@ -204,8 +218,51 @@ RealNum PlanarPlanner::RandomRealNumber(const RealNum lower_bound, const RealNum
     return uni_(rng_)*(higher_bound - lower_bound) + lower_bound;
 }
 
-bool PlanarPlanner::StateValid(const ob::State *state) {
+bool PlanarPlanner::StateValid(const ob::State *state) { // Nadav
+    #if USE_POI_FOCUS
+    bool extends_view = true;
+    bool focus = false;
+    if (graph_ != nullptr)
+    {
+        RealNum coverage = graph_->NumTargetsCovered()*(RealNum)100/env_->NumTargets();
+        if (coverage > FOCUS_START_COVERAGE && valid_states_counter % focus_frequency == 0 && invalid_states_counter < FOCUS_MAX_FAILURES)
+        {
+            focus = true;
+            auto shape = StateToShape(state);
+            auto visible_points = env_->GetVisiblePointIndices(shape, robot_->FOV());
+            VisibilitySet vis_set;
+            for (auto p : visible_points) {
+                vis_set.Insert(p);
+            }
+            extends_view = !vis_set.IsContainedIn(graph_->GetGlobalVisibility());
+        }
+        if (invalid_states_counter == FOCUS_MAX_FAILURES)
+        {
+            std::cout << "focus_frequency " << focus_frequency << std::endl;
+            focus_frequency *= 1.5;
+        }
+    }
+    bool validity = extends_view && env_->IsCollisionFree(StateToShape(state));
+    if (validity)
+    {
+        valid_states_counter++;
+        invalid_states_counter = 0;
+        if (focus)
+        {
+            //std::cout << "invalid_states_counter " << invalid_states_counter << std::endl;
+            focus_frequency = FOCUS_FREQUENCY;
+        }
+    }
+    else
+    {
+        invalid_states_counter++;
+    }
+    
+    return validity;
+
+    #else
     return env_->IsCollisionFree(StateToShape(state));
+    #endif // USE_POI_FOCUS
 }
 
 bool PlanarPlanner::CheckEdge(const ob::State *source, const ob::State *target, const RealNum dist) const {

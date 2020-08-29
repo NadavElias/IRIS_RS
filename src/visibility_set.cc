@@ -76,3 +76,7 @@ SizeType VisibilitySet::Size() const {
 const VisibilitySet::Bitset& VisibilitySet::bitset() const {
     return bitset_;
 }
+
+SizeType VisibilitySet::ContainsMoreThan(const VisibilitySet& other) const{ //Nadav
+    return ((bitset_ ^ other.bitset()) & bitset_).count();
+}

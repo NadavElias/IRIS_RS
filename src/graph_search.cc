@@ -125,7 +125,7 @@ std::vector<Idx> GraphSearch::SearchVirtualGraphCompleteLazy(const RealNum p, co
 
         if (!found) {
             std::cerr << "Error!" << std::endl;
-            getchar();
+            //getchar(); // Nadav
         }
 
         NodePtr tag = result_node;
@@ -234,7 +234,6 @@ std::vector<Idx> GraphSearch::SearchVirtualGraph(const RealNum p, const RealNum 
 		if (result_node == nullptr || n->BetterThan(result_node)) {
 			result_node = n;
 		}
-
 		// check for termination
 		if (InGoalSet(n)) {
 			found = true;
@@ -248,7 +247,7 @@ std::vector<Idx> GraphSearch::SearchVirtualGraph(const RealNum p, const RealNum 
 
 	if (!found) {
 		std::cerr << "Error!" << std::endl;
-		getchar();
+		//getchar(); // Nadav
 	}
 
 	if (result_node->BetterThan(result_)) {
@@ -731,7 +730,7 @@ RealNum GraphSearch::ResultCost() const {
 
 void GraphSearch::PrintTitle(std::ostream &out) const {
     out << "GraphSize "
-        << "GraphCoverage"
+        << "GraphCoverage "
         << "P "
         << "EPS "
         << "Coverage "
